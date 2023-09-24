@@ -17,3 +17,8 @@ GUI content:
 additional features:
 
 - batch processing of folders (additional button, select input and output path)
+
+
+Bugs:
+- the size of the image is changed when drawn on the canvas --> Frame around the image
+--> Solution: Only use the canvas to show it, but work internally only with the pil image
