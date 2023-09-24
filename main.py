@@ -19,8 +19,9 @@ import tkinter
 from tkinter import filedialog as fd
 from PIL import Image, ImageTk, ImageFont, ImageDraw
 import time
+import math
 
-font = ImageFont.truetype("arial.ttf", 100)
+
 
 filename = ""
 def open_file():
@@ -28,28 +29,68 @@ def open_file():
     filename = fd.askopenfilename()
     print(filename)
     photo = ImageTk.PhotoImage(file=filename)
+    canvas.config(width=photo.width(),height=photo.height())
     canvas.delete("all") # deletes everything showing on the canvas'
-    canvas.create_image(200,200,image = photo)
+    canvas.create_image(photo.width()/2+1,photo.height()/2+1,image = photo)
     canvas.grid(column=0,row=0)
     canvas.image = photo # if this is not done, it wont work, no image will be shown, ChatGPT says its because the image gets garbage collected, not sure why that is the case
+
+  
+
+
+def add_2_images():
+    global filename
     
+    n = 5 # number of watermarks
+    watermark = "Protected"
+    watermark = entry_watermark.get()
+    with Image.open(filename).convert('RGBA') as base:
+        width, height  = base.size
+        pad_percentage = 0.1 # padding percentage
+        pad = math.floor(width * pad_percentage)    # calculate the gap from the edges to the watermarks
+       
+        fontsize = math.floor((height-pad*2)/(2*n - 1))    # - 2*margins, 2n-1 lines, n times watermark, n-1 empty lines
+        font = ImageFont.truetype("arial.ttf", fontsize)    # set the font
+        
+        txt_image = Image.new('RGBA',base.size,(255,255,255,0)) # make empty image
+        txt = ImageDraw.Draw(txt_image)     # initialise drawing object for the empty image
+        text_width = math.floor(txt.textlength(watermark, font=font)) # get the text length
+        shift = math.floor((width - 2*pad - text_width)/(n-1)) # shift per text line
+        shifts = 0
+        print(f"Fontsize: {fontsize}, text width: {text_width}, shift: {shift}")
+        for i in range(0 + pad,height-pad-fontsize+1,2*fontsize): # "+1" needed to get correct number of watermarks
+            print(i)
+            txt.text((pad + shift*shifts, i), watermark, font=font, fill =(255, 255, 255,100)) # new text for each line, shifted
+            shifts += 1
+        combined = Image.alpha_composite(base,txt_image)
+        canvas.delete("all") # deletes everything showing on the canvas'
+        photo = ImageTk.PhotoImage(combined)
+        canvas.create_image(photo.width()/2 + 1,photo.height()/2 + 1,image = photo)
+        canvas.grid(column=0,row=0)
+        canvas.image = photo
+        #combined.show()
 
-def show_watermark():
-    im = Image.new(mode="RGB", size=(800, 800))
-    I1 = ImageDraw.Draw(im)
-    I1.text((50, 400), "Watermark", font=font, fill =(50, 50, 50))
-    im.show()
 
+# 1. 10% from edge away
+# 2. calculate font size
+# 3. calculate how many lines possible
+# 4. draw the text multiple times always shifted a bit to the right so it ends up 10% from the right    
 
 window = tkinter.Tk() # initialise the tkinter window
 window.title("Watermarker")
 window.config(padx=50, pady=50)
 canvas = tkinter.Canvas(width=800, height=800, bg='black')
-canvas.grid(column=0,row=0)
+canvas.grid(column=0,row=0, columnspan=3)
 
 b_load = tkinter.Button(text="Load image", command=open_file)
 b_load.grid(column=3, row=3)
 
-b_show_water_image = tkinter.Button(text="Show Watermark", command=show_watermark)
-b_show_water_image.grid(column=0, row=3)
+b_add_2_images = tkinter.Button(text="Apply watermark", command= add_2_images)
+b_add_2_images.grid(column=1,row=3)
+
+l_watermark = tkinter.Label(text="Watermark text:")
+l_watermark.grid(column=0, row=3, sticky='W')
+entry_watermark = tkinter.Entry()
+entry_watermark.grid(column=0, row=3, sticky='E')
+
 window.mainloop() # run the mainloop, keep the window open
